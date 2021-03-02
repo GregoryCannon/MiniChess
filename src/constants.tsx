@@ -83,10 +83,10 @@ export enum TurnState {
 export const STARTING_BOARD: Board = [
   [
     PieceType.RookBlack,
-    PieceType.BishopBlack,
+    PieceType.KnightBlack,
     PieceType.KingBlack,
     PieceType.QueenBlack,
-    PieceType.KnightBlack,
+    PieceType.BishopBlack,
   ],
   [
     PieceType.PawnBlack,
@@ -105,9 +105,9 @@ export const STARTING_BOARD: Board = [
   ],
   [
     PieceType.RookWhite,
-    PieceType.BishopWhite,
+    PieceType.KnightWhite,
     PieceType.KingWhite,
     PieceType.QueenWhite,
-    PieceType.KnightWhite,
+    PieceType.BishopWhite,
   ],
 ];

@@ -91,13 +91,6 @@ class GameManager extends React.Component<
     if (this.getMovablePieces().has(formatLocation(clickLocation))) {
       this.setState({ selectedCell: clickLocation });
     }
-
-    // FOR TESTING ONLY
-    const moveList = generatePossibleMoves(
-      this.state.board,
-      this.state.turnState
-    );
-    console.log(moveList.map((move) => formatMove(move)));
   }
 
   getLegalDestinations(): Set<string> {
@@ -155,7 +148,6 @@ class GameManager extends React.Component<
 
   render() {
     const secondaryHighlightedCells: Set<string> = this.getSemiHighlightedCells();
-    console.log("Highlighted cells:", secondaryHighlightedCells);
 
     return (
       <div className="GameManager">
