@@ -7,7 +7,16 @@ import {
   Move,
   BOARD_SIZE,
   MoveMap,
-} from "./constants";
+} from "../constants";
+import {
+  getPieceAtCell,
+  isColorOfCurrentPlayer,
+  cellIsEmpty,
+  cellHasEnemyPiece,
+  isWhitePiece,
+  isBlackPiece,
+} from "./board-utils";
+import { formatLocation } from "./io-utils";
 
 /* ----------------------
     Generating moves
@@ -57,9 +66,9 @@ export function convertToMoveMap(moveList: Array<Move>): MoveMap {
     const startStr = formatLocation(move.startCell);
     const endStr = formatLocation(move.endCell);
     if (!map.has(startStr)) {
-      map.set(startStr, []);
+      map.set(startStr, new Set());
     }
-    map.get(startStr).push(endStr);
+    map.get(startStr).add(endStr);
   }
   return map;
 }
@@ -231,98 +240,4 @@ function getMovesForPiece(
   }
 
   return movesForPiece;
-}
-
-/* ----------------------
-    Querying the board
-   ---------------------- */
-
-function coordinatesOutOfBounds(row: number, col: number): boolean {
-  return row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE;
-}
-
-/** Returns whether a cell is empty, if it exists. */
-function cellIsEmpty(location: Location, board: Board) {
-  const [row, col] = location;
-  if (coordinatesOutOfBounds(row, col)) {
-    return false;
-  }
-  return board[row][col] === EMPTY;
-}
-
-function cellHasEnemyPiece(
-  location: Location,
-  currentPiece: PieceType,
-  board: Board
-) {
-  const capturedPiece = getPieceAtCell(location, board);
-  if (!capturedPiece) {
-    return false;
-  }
-  return (
-    (isWhitePiece(currentPiece) && isBlackPiece(capturedPiece)) ||
-    (isBlackPiece(currentPiece) && isWhitePiece(capturedPiece))
-  );
-}
-
-/**
- * Gets the piece in a cell.
- * @returns undefined if there's no piece there, or the coordinates were out of bounds.
- */
-export function getPieceAtCell(location: Location, board: Board) {
-  const [row, col] = location;
-  if (coordinatesOutOfBounds(row, col)) {
-    return undefined;
-  }
-  const cellContents = board[row][col];
-  return cellContents === EMPTY ? undefined : cellContents;
-}
-
-export function isColorOfCurrentPlayer(
-  pieceType: PieceType,
-  turnState: TurnState
-) {
-  return (
-    (turnState === TurnState.WhiteTurn && isWhitePiece(pieceType)) ||
-    (turnState === TurnState.BlackTurn && isBlackPiece(pieceType))
-  );
-}
-
-function isWhitePiece(pieceType: PieceType) {
-  return (
-    pieceType === PieceType.BishopWhite ||
-    pieceType === PieceType.RookWhite ||
-    pieceType === PieceType.KnightWhite ||
-    pieceType === PieceType.PawnWhite ||
-    pieceType === PieceType.QueenWhite ||
-    pieceType === PieceType.KingWhite
-  );
-}
-
-function isBlackPiece(pieceType: PieceType) {
-  return (
-    pieceType === PieceType.BishopBlack ||
-    pieceType === PieceType.RookBlack ||
-    pieceType === PieceType.KnightBlack ||
-    pieceType === PieceType.PawnBlack ||
-    pieceType === PieceType.QueenBlack ||
-    pieceType === PieceType.KingBlack
-  );
-}
-
-/* ----------------------
-    Formatting Output
-   ---------------------- */
-
-export function formatLocation(location: Location) {
-  const [row, col] = location;
-  const formattedRow = ["e", "d", "c", "b", "a"][row];
-  const formattedCol = col + 1;
-  return formattedRow + formattedCol;
-}
-
-export function formatMove(move: Move) {
-  return `${move.pieceType} ${formatLocation(move.startCell)}${
-    move.isCapture ? "x" : "->"
-  }${formatLocation(move.endCell)}`;
 }

@@ -12,11 +12,14 @@ import GameBoard from "./ui_components/GameBoard";
 import {
   canMovePiece,
   convertToMoveMap,
-  formatMove,
   generatePossibleMoves,
+} from "./utils/move-utils";
+import {
   getPieceAtCell,
   isColorOfCurrentPlayer,
-} from "./utils";
+  getBoardAfterMove,
+} from "./utils/board-utils";
+import { formatLocation, formatMove } from "./utils/io-utils";
 
 class GameManager extends React.Component<
   {},
@@ -69,14 +72,7 @@ class GameManager extends React.Component<
   }
 
   movePiece(start: Location, end: Location) {
-    const initialPiece = getPieceAtCell(start, this.state.board);
-    const [startRow, startCol] = start;
-    const [endRow, endCol] = end;
-
-    const newBoard = JSON.parse(JSON.stringify(this.state.board));
-    newBoard[startRow][startCol] = EMPTY;
-    newBoard[endRow][endCol] = initialPiece;
-
+    const newBoard = getBoardAfterMove(start, end, this.state.board);
     this.setState({ board: newBoard }, () => {
       this.endTurn();
     });
@@ -91,18 +87,18 @@ class GameManager extends React.Component<
     }
 
     if (this.state.selectedCell) {
+      // If clicked on selected piece, de-select it
+      if (clickLocation.toString() === this.state.selectedCell.toString()) {
+        this.setState({ selectedCell: undefined });
+        return;
+      }
+
+      // Otherwise, attempt to move the piece there
       const startSquare = this.state.selectedCell;
-      const currentPieceType = getPieceAtCell(startSquare, this.state.board);
       if (
-        currentPieceType &&
-        canMovePiece(
-          currentPieceType,
-          startSquare,
-          clickLocation,
-          this.state.board
-        )
+        this.getMovablePieces().has(formatLocation(this.state.selectedCell)) &&
+        this.getLegalDestinations().has(formatLocation(clickLocation))
       ) {
-        // Move the selected piece there
         this.movePiece(startSquare, clickLocation);
         return;
       }
@@ -119,6 +115,35 @@ class GameManager extends React.Component<
       this.state.turnState
     );
     console.log(moveList.map((move) => formatMove(move)));
+  }
+
+  getLegalDestinations(): Set<string> {
+    if (!this.state.selectedCell || !this.state.moveMap) {
+      return new Set();
+    }
+    return (
+      this.state.moveMap.get(formatLocation(this.state.selectedCell)) ||
+      new Set()
+    );
+  }
+
+  getMovablePieces() {
+    return new Set(this.state.moveMap?.keys());
+  }
+
+  getSemiHighlightedCells(): Set<string> {
+    const cellSet: Set<string> = new Set();
+
+    if (this.state.selectedCell) {
+      if (!this.state.moveMap) {
+        return cellSet;
+      }
+      // Return all the cells that the selected piece can move to
+      return this.getLegalDestinations() || cellSet;
+    } else {
+      // Return all the pieces that have legal moves
+      return this.getMovablePieces();
+    }
   }
 
   getStatusMessage() {
@@ -138,11 +163,17 @@ class GameManager extends React.Component<
     this.setState({
       board: STARTING_BOARD,
       turnState: TurnState.WhiteTurn,
+      moveMap: convertToMoveMap(
+        generatePossibleMoves(STARTING_BOARD, TurnState.WhiteTurn)
+      ),
       selectedCell: undefined,
     });
   }
 
   render() {
+    const secondaryHighlightedCells: Set<string> = this.getSemiHighlightedCells();
+    console.log("Highlighted cells:", secondaryHighlightedCells);
+
     return (
       <div className="GameManager">
         <h2>Main Game</h2>
@@ -152,6 +183,7 @@ class GameManager extends React.Component<
           <GameBoard
             onCellClicked={this.onCellClicked}
             selectedCell={this.state.selectedCell}
+            secondaryHighlightedCells={secondaryHighlightedCells}
             board={this.state.board}
           />
         </div>

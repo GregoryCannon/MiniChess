@@ -1,6 +1,7 @@
 import React from "react";
 import "./GameBoard.css";
 import { Board, CellContents, EMPTY, Location, PieceType } from "../constants";
+import { formatLocation } from "../utils/io-utils";
 
 function cellIsSelected(
   rowIndex: number,
@@ -74,8 +75,9 @@ function getAltTextForPiece(piece: PieceType): string {
 
 function GameBoard(props: {
   board: Board;
-  selectedCell?: Location;
   onCellClicked: Function;
+  selectedCell?: Location;
+  secondaryHighlightedCells: Set<string>;
 }) {
   return (
     <div className="game-board">
@@ -87,9 +89,7 @@ function GameBoard(props: {
           {row.map((cellContents: CellContents, colIndex) => (
             <div
               className={
-                cellIsSelected(rowIndex, colIndex, props.selectedCell)
-                  ? "board-square selected"
-                  : (rowIndex + colIndex) % 2 === 0
+                (rowIndex + colIndex) % 2 === 0
                   ? "board-square white"
                   : "board-square black"
               }
@@ -98,12 +98,24 @@ function GameBoard(props: {
                 props.onCellClicked([rowIndex, colIndex]);
               }}
             >
-              {cellContents && cellContents !== EMPTY && (
-                <img
-                  src={getImageForPiece(cellContents)}
-                  alt={getAltTextForPiece(cellContents)}
-                ></img>
-              )}
+              <div
+                className={
+                  cellIsSelected(rowIndex, colIndex, props.selectedCell)
+                    ? "highlight-layer primary-highlighted"
+                    : props.secondaryHighlightedCells.has(
+                        formatLocation([rowIndex, colIndex])
+                      )
+                    ? "highlight-layer secondary-highlighted"
+                    : "highlight-layer"
+                }
+              >
+                {cellContents && cellContents !== EMPTY && (
+                  <img
+                    src={getImageForPiece(cellContents)}
+                    alt={getAltTextForPiece(cellContents)}
+                  ></img>
+                )}
+              </div>
             </div>
           ))}
         </div>

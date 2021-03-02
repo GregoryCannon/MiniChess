@@ -6,7 +6,7 @@ export type Location = Array<number>; // e.g. [1, 2] for row 1 column 2
 
 export type CellContents = PieceType | typeof EMPTY;
 
-export type MoveMap = Map<string, Array<string>>;
+export type MoveMap = Map<string, Set<string>>;
 
 export interface Move {
   startCell: Location;
