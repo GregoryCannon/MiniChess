@@ -15,6 +15,11 @@ export interface Move {
   isCapture: boolean;
 }
 
+export interface EvalResult {
+  score: number;
+  bestMove?: Move;
+}
+
 /* ----------- Constants and Enums ----------- */
 
 export const BOARD_SIZE = 5;

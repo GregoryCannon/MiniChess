@@ -11,6 +11,10 @@ import GameBoard from "./ui_components/GameBoard";
 import { convertToMoveMap, generatePossibleMoves } from "./utils/move-utils";
 import { getBoardAfterMove } from "./utils/board-utils";
 import { formatLocation, formatMove } from "./utils/io-utils";
+import { getBestMove } from "./utils/ai";
+
+const blackIsHuman = false;
+const whiteIsHuman = false;
 
 class GameManager extends React.Component<
   {},
@@ -25,10 +29,8 @@ class GameManager extends React.Component<
     super(props);
     this.state = {
       board: STARTING_BOARD,
-      turnState: TurnState.WhiteTurn,
-      moveMap: convertToMoveMap(
-        generatePossibleMoves(STARTING_BOARD, TurnState.WhiteTurn)
-      ),
+      turnState: TurnState.NotStarted,
+      moveMap: undefined,
       selectedCell: undefined,
     };
 
@@ -41,17 +43,31 @@ class GameManager extends React.Component<
       this.state.turnState === TurnState.WhiteTurn
         ? TurnState.BlackTurn
         : TurnState.WhiteTurn;
+    const nextPlayerIsHuman =
+      nextTurnState === TurnState.WhiteTurn ? whiteIsHuman : blackIsHuman;
 
-    // Generate legal moves for next player
-    const moveMap = convertToMoveMap(
-      generatePossibleMoves(this.state.board, nextTurnState)
-    );
+    if (nextPlayerIsHuman) {
+      // Generate legal moves for next player
+      const moveMap = convertToMoveMap(
+        generatePossibleMoves(this.state.board, nextTurnState)
+      );
 
-    this.setState({
-      selectedCell: undefined,
-      turnState: nextTurnState,
-      moveMap,
-    });
+      this.setState({
+        selectedCell: undefined,
+        turnState: nextTurnState,
+        moveMap,
+      });
+    } else {
+      // Advance the turn and let AI make the next move
+      this.setState(
+        {
+          selectedCell: undefined,
+          turnState: nextTurnState,
+          moveMap: undefined,
+        },
+        () => this.playAiMoveAfterDelay(1000)
+      );
+    }
   }
 
   movePiece(start: Location, end: Location) {
@@ -135,15 +151,58 @@ class GameManager extends React.Component<
     }
   }
 
-  restart() {
-    this.setState({
-      board: STARTING_BOARD,
-      turnState: TurnState.WhiteTurn,
-      moveMap: convertToMoveMap(
-        generatePossibleMoves(STARTING_BOARD, TurnState.WhiteTurn)
-      ),
-      selectedCell: undefined,
+  playAiMoveAfterDelay(delayMs: number) {
+    const self = this;
+    setTimeout(
+      function () {
+        console.log("Callback called");
+        self.playAiMoveInternal();
+      }.bind(this),
+      delayMs
+    );
+  }
+
+  playAiMoveInternal() {
+    const aiResult = getBestMove(
+      this.state.board,
+      this.state.turnState === TurnState.WhiteTurn
+    );
+    const aiMove = aiResult.bestMove;
+    if (!aiMove) {
+      return;
+    }
+    console.log("Ai Move:", formatMove(aiMove), "Value:", aiResult.score);
+    const newBoard = getBoardAfterMove(
+      aiMove.startCell,
+      aiMove.endCell,
+      this.state.board
+    );
+    this.setState({ board: newBoard }, () => {
+      this.endTurn();
     });
+  }
+
+  restart() {
+    if (whiteIsHuman) {
+      this.setState({
+        board: STARTING_BOARD,
+        turnState: TurnState.WhiteTurn,
+        moveMap: convertToMoveMap(
+          generatePossibleMoves(STARTING_BOARD, TurnState.WhiteTurn)
+        ),
+        selectedCell: undefined,
+      });
+    } else {
+      this.setState(
+        {
+          board: STARTING_BOARD,
+          turnState: TurnState.WhiteTurn,
+        },
+        () => {
+          this.playAiMoveAfterDelay(1000);
+        }
+      );
+    }
   }
 
   render() {

@@ -313,10 +313,10 @@ function kingHasBishoplikeAttackers(
       : type === PieceType.BishopWhite || type === PieceType.QueenWhite;
 
   // Scan up-right
-  let [r, c] = [kingRow + 1, kingCol - 1];
+  let [r, c] = [kingRow - 1, kingCol + 1];
   while (cellIsEmpty([r, c], board)) {
-    r += 1;
-    c -= 1;
+    r -= 1;
+    c += 1;
   }
   if (isEnemyBishopLike(getPieceAtCell([r, c], board))) {
     return true;
@@ -389,38 +389,12 @@ function findKings(board: Board, isWhite: boolean) {
   return [kingRow, kingCol, enemyKingRow, enemyKingCol];
 }
 
-/**
- * Checks if a board state either leaves the friendly king in check, or has touching kings.
- * @param board
- * @param turnState
- */
-export function boardStateIsIllegal(board: Board, turnState: TurnState) {
-  // Check for bad turn state
-  if (
-    !(turnState === TurnState.WhiteTurn || turnState === TurnState.BlackTurn)
-  ) {
-    throw new Error(
-      "Requested king check status for invalid turn state: " + turnState
-    );
-  }
-  const isWhite = turnState === TurnState.WhiteTurn;
-
-  // Find the kings
-  const kingLocations = findKings(board, isWhite);
-  if (kingLocations === undefined) {
-    console.log("One or more kings not found on the board!", board);
-    return true;
-  }
-  let [kingRow, kingCol, enemyKingRow, enemyKingCol] = kingLocations;
-
-  // Check for kissing kings
-  if (
-    Math.abs(kingRow - enemyKingRow) <= 1 &&
-    Math.abs(kingCol - enemyKingCol) <= 1
-  ) {
-    return true;
-  }
-
+export function kingIsInCheck(
+  kingRow: number,
+  kingCol: number,
+  board: Board,
+  isWhite: boolean
+) {
   // Check for pawn attackers
   if (isWhite) {
     if (
@@ -462,6 +436,59 @@ export function boardStateIsIllegal(board: Board, turnState: TurnState) {
   if (kingHasBishoplikeAttackers(kingRow, kingCol, board, isWhite)) {
     return true;
   }
+}
 
+/**
+ * Checks if a board state either leaves the friendly king in check, or has touching kings.
+ * @param board
+ * @param turnState
+ */
+export function boardStateIsIllegal(board: Board, turnState: TurnState) {
+  // Check for bad turn state
+  if (
+    !(turnState === TurnState.WhiteTurn || turnState === TurnState.BlackTurn)
+  ) {
+    throw new Error(
+      "Requested king check status for invalid turn state: " + turnState
+    );
+  }
+  const isWhite = turnState === TurnState.WhiteTurn;
+
+  // Find the kings
+  const kingLocations = findKings(board, isWhite);
+  if (kingLocations === undefined) {
+    console.log("One or more kings not found on the board!", board);
+    return true;
+  }
+  let [kingRow, kingCol, enemyKingRow, enemyKingCol] = kingLocations;
+
+  // Check for kissing kings
+  if (
+    Math.abs(kingRow - enemyKingRow) <= 1 &&
+    Math.abs(kingCol - enemyKingCol) <= 1
+  ) {
+    return true;
+  }
+
+  // The board state is illegal if the move puts the king in check
+  return kingIsInCheck(kingRow, kingCol, board, isWhite);
+}
+
+/** Returns true if the player whose turn it is has lost by checkmate. */
+export function isCheckmate(board: Board, isWhite: boolean) {
+  const kingLocations = findKings(board, isWhite);
+  if (kingLocations === undefined) {
+    throw new Error("Cannot evaluate board, missing king");
+  }
+  const [kingRow, kingCol, _, __] = kingLocations;
+  if (kingIsInCheck(kingRow, kingCol, board, isWhite)) {
+    const moveList = generatePossibleMoves(
+      board,
+      isWhite ? TurnState.WhiteTurn : TurnState.BlackTurn
+    );
+    if (moveList.length === 0) {
+      return true;
+    }
+  }
   return false;
 }
