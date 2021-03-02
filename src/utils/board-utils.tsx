@@ -4,7 +4,6 @@ import {
   Board,
   EMPTY,
   TurnState,
-  Move,
   BOARD_SIZE,
 } from "../constants";
 

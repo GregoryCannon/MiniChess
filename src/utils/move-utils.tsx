@@ -2,7 +2,6 @@ import {
   PieceType,
   Location,
   Board,
-  EMPTY,
   TurnState,
   Move,
   BOARD_SIZE,
@@ -15,6 +14,7 @@ import {
   cellHasEnemyPiece,
   isWhitePiece,
   isBlackPiece,
+  getBoardAfterMove,
 } from "./board-utils";
 import { formatLocation } from "./io-utils";
 
@@ -87,7 +87,9 @@ export function generatePossibleMoves(
       if (!piece || !isColorOfCurrentPlayer(piece, turnState)) {
         continue;
       }
-      legalMoves = legalMoves.concat(getMovesForPiece(piece, startCell, board));
+      legalMoves = legalMoves.concat(
+        getMovesForPiece(piece, startCell, board, turnState)
+      );
     }
   }
 
@@ -97,7 +99,8 @@ export function generatePossibleMoves(
 function getMovesForPiece(
   pieceType: PieceType,
   startCell: Location,
-  board: Board
+  board: Board,
+  turnState: TurnState
 ): Array<Move> {
   let movesForPiece: Array<Move> = [];
 
@@ -239,5 +242,226 @@ function getMovesForPiece(
       break;
   }
 
+  // Filter out moves that leave the king in check
+  movesForPiece = movesForPiece.filter((move) => {
+    const boardAfter = getBoardAfterMove(move.startCell, move.endCell, board);
+    return !boardStateIsIllegal(boardAfter, turnState);
+  });
+
   return movesForPiece;
+}
+
+function kingHasRooklikeAttackers(
+  kingRow: number,
+  kingCol: number,
+  board: Board,
+  isWhite: boolean
+) {
+  const isEnemyRookLike = (type?: PieceType) =>
+    isWhite
+      ? type === PieceType.RookBlack || type === PieceType.QueenBlack
+      : type === PieceType.RookWhite || type === PieceType.QueenWhite;
+
+  // Scan right
+  let [r, c] = [kingRow + 1, kingCol];
+  while (cellIsEmpty([r, c], board)) {
+    r += 1;
+  }
+  if (isEnemyRookLike(getPieceAtCell([r, c], board))) {
+    return true;
+  }
+
+  // Scan left
+  [r, c] = [kingRow - 1, kingCol];
+  while (cellIsEmpty([r, c], board)) {
+    r -= 1;
+  }
+  if (isEnemyRookLike(getPieceAtCell([r, c], board))) {
+    return true;
+  }
+
+  // Scan up
+  [r, c] = [kingRow, kingCol - 1];
+  while (cellIsEmpty([r, c], board)) {
+    c -= 1;
+  }
+  if (isEnemyRookLike(getPieceAtCell([r, c], board))) {
+    return true;
+  }
+
+  // Scan down
+  [r, c] = [kingRow, kingCol + 1];
+  while (cellIsEmpty([r, c], board)) {
+    c += 1;
+  }
+  if (isEnemyRookLike(getPieceAtCell([r, c], board))) {
+    return true;
+  }
+
+  return false;
+}
+
+function kingHasBishoplikeAttackers(
+  kingRow: number,
+  kingCol: number,
+  board: Board,
+  isWhite: boolean
+) {
+  const isEnemyBishopLike = (type?: PieceType) =>
+    isWhite
+      ? type === PieceType.BishopBlack || type === PieceType.QueenBlack
+      : type === PieceType.BishopWhite || type === PieceType.QueenWhite;
+
+  // Scan up-right
+  let [r, c] = [kingRow + 1, kingCol - 1];
+  while (cellIsEmpty([r, c], board)) {
+    r += 1;
+    c -= 1;
+  }
+  if (isEnemyBishopLike(getPieceAtCell([r, c], board))) {
+    return true;
+  }
+
+  // Scan up-left
+  [r, c] = [kingRow - 1, kingCol - 1];
+  while (cellIsEmpty([r, c], board)) {
+    r -= 1;
+    c -= 1;
+  }
+  if (isEnemyBishopLike(getPieceAtCell([r, c], board))) {
+    return true;
+  }
+
+  // Scan down-right
+  [r, c] = [kingRow + 1, kingCol + 1];
+  while (cellIsEmpty([r, c], board)) {
+    r += 1;
+    c += 1;
+  }
+  if (isEnemyBishopLike(getPieceAtCell([r, c], board))) {
+    return true;
+  }
+
+  // Scan down-left
+  [r, c] = [kingRow + 1, kingCol - 1];
+  while (cellIsEmpty([r, c], board)) {
+    r += 1;
+    c -= 1;
+  }
+  if (isEnemyBishopLike(getPieceAtCell([r, c], board))) {
+    return true;
+  }
+
+  return false;
+}
+
+function findKings(board: Board, isWhite: boolean) {
+  // Find the kings
+  let kingRow = undefined,
+    kingCol = undefined;
+  let enemyKingRow = undefined,
+    enemyKingCol = undefined;
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      if (
+        (isWhite && board[r][c] === PieceType.KingWhite) ||
+        (!isWhite && board[r][c] === PieceType.KingBlack)
+      ) {
+        kingRow = r;
+        kingCol = c;
+      } else if (
+        (!isWhite && board[r][c] === PieceType.KingWhite) ||
+        (isWhite && board[r][c] === PieceType.KingBlack)
+      ) {
+        enemyKingRow = r;
+        enemyKingCol = c;
+      }
+    }
+  }
+  if (
+    kingRow === undefined ||
+    kingCol === undefined ||
+    enemyKingRow === undefined ||
+    enemyKingCol === undefined
+  ) {
+    return undefined;
+  }
+  return [kingRow, kingCol, enemyKingRow, enemyKingCol];
+}
+
+/**
+ * Checks if a board state either leaves the friendly king in check, or has touching kings.
+ * @param board
+ * @param turnState
+ */
+export function boardStateIsIllegal(board: Board, turnState: TurnState) {
+  // Check for bad turn state
+  if (
+    !(turnState === TurnState.WhiteTurn || turnState === TurnState.BlackTurn)
+  ) {
+    throw new Error(
+      "Requested king check status for invalid turn state: " + turnState
+    );
+  }
+  const isWhite = turnState === TurnState.WhiteTurn;
+
+  // Find the kings
+  const kingLocations = findKings(board, isWhite);
+  if (kingLocations === undefined) {
+    console.log("One or more kings not found on the board!", board);
+    return true;
+  }
+  let [kingRow, kingCol, enemyKingRow, enemyKingCol] = kingLocations;
+
+  // Check for kissing kings
+  if (
+    Math.abs(kingRow - enemyKingRow) <= 1 &&
+    Math.abs(kingCol - enemyKingCol) <= 1
+  ) {
+    return true;
+  }
+
+  // Check for pawn attackers
+  if (isWhite) {
+    if (
+      getPieceAtCell([kingRow - 1, kingCol - 1], board) ===
+        PieceType.PawnBlack ||
+      getPieceAtCell([kingRow - 1, kingCol + 1], board) === PieceType.PawnBlack
+    ) {
+      return true;
+    }
+  } else {
+    if (
+      getPieceAtCell([kingRow + 1, kingCol - 1], board) ===
+        PieceType.PawnWhite ||
+      getPieceAtCell([kingRow + 1, kingCol + 1], board) === PieceType.PawnWhite
+    ) {
+      return true;
+    }
+  }
+
+  // Check for knight attackers
+  const enemyKnightType = isWhite
+    ? PieceType.KnightBlack
+    : PieceType.KnightWhite;
+  if (
+    getPieceAtCell([kingRow + 2, kingCol - 1], board) === enemyKnightType ||
+    getPieceAtCell([kingRow + 2, kingCol + 1], board) === enemyKnightType ||
+    getPieceAtCell([kingRow - 2, kingCol - 1], board) === enemyKnightType ||
+    getPieceAtCell([kingRow - 2, kingCol + 1], board) === enemyKnightType
+  ) {
+    return true;
+  }
+
+  // Check for rook-like attackers
+  if (kingHasRooklikeAttackers(kingRow, kingCol, board, isWhite)) {
+    return true;
+  }
+
+  // Check for bishop-like attackers
+  if (kingHasBishoplikeAttackers(kingRow, kingCol, board, isWhite)) {
+    return true;
+  }
+
+  return false;
 }

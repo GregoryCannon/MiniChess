@@ -1,7 +1,6 @@
 import React from "react";
 import {
   Board,
-  EMPTY,
   Location,
   MoveMap,
   STARTING_BOARD,
@@ -9,16 +8,8 @@ import {
 } from "./constants";
 import "./GameManager.css";
 import GameBoard from "./ui_components/GameBoard";
-import {
-  canMovePiece,
-  convertToMoveMap,
-  generatePossibleMoves,
-} from "./utils/move-utils";
-import {
-  getPieceAtCell,
-  isColorOfCurrentPlayer,
-  getBoardAfterMove,
-} from "./utils/board-utils";
+import { convertToMoveMap, generatePossibleMoves } from "./utils/move-utils";
+import { getBoardAfterMove } from "./utils/board-utils";
 import { formatLocation, formatMove } from "./utils/io-utils";
 
 class GameManager extends React.Component<
@@ -43,14 +34,6 @@ class GameManager extends React.Component<
 
     this.onCellClicked = this.onCellClicked.bind(this);
     this.restart = this.restart.bind(this);
-  }
-
-  canSelectCell(location: Location) {
-    const selectedPiece = getPieceAtCell(location, this.state.board);
-    if (!selectedPiece) {
-      return false;
-    }
-    return isColorOfCurrentPlayer(selectedPiece, this.state.turnState);
   }
 
   endTurn() {
@@ -104,8 +87,8 @@ class GameManager extends React.Component<
       }
     }
 
-    // Otherwise, select the square that was clicked
-    if (this.canSelectCell(clickLocation)) {
+    // Otherwise, select the square that was clicked (if the piece is movable)
+    if (this.getMovablePieces().has(formatLocation(clickLocation))) {
       this.setState({ selectedCell: clickLocation });
     }
 
