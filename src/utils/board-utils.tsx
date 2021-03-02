@@ -85,12 +85,20 @@ export function getBoardAfterMove(
   endCell: Location,
   board: Board
 ): Board {
-  const initialPiece = getPieceAtCell(startCell, board);
+  let piece = getPieceAtCell(startCell, board);
   const [startRow, startCol] = startCell;
   const [endRow, endCol] = endCell;
 
+  // Promote pawns to queens if needed
+  if (piece === PieceType.PawnWhite && endRow === 0) {
+    piece = PieceType.QueenWhite;
+  } else if (piece === PieceType.PawnBlack && endRow === BOARD_SIZE - 1) {
+    piece = PieceType.QueenBlack;
+  }
+
   const newBoard = JSON.parse(JSON.stringify(board));
   newBoard[startRow][startCol] = EMPTY;
-  newBoard[endRow][endCol] = initialPiece;
+  newBoard[endRow][endCol] = piece;
+
   return newBoard;
 }
