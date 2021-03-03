@@ -17,7 +17,7 @@ import {
   isBlackPiece,
   getBoardAfterMove,
 } from "./board-utils";
-import { encodeBoard, formatLocation } from "./io-utils";
+import { encodeBoard, formatLocation, formatMove } from "./io-utils";
 
 /* ----------------------
     Generating moves
@@ -224,6 +224,10 @@ function getMovesForPiece(
       tryMoveOrCaptureAtLocation(row - 2, col - 1);
       tryMoveOrCaptureAtLocation(row + 2, col + 1);
       tryMoveOrCaptureAtLocation(row + 2, col - 1);
+      tryMoveOrCaptureAtLocation(row - 1, col + 2);
+      tryMoveOrCaptureAtLocation(row - 1, col - 2);
+      tryMoveOrCaptureAtLocation(row + 1, col + 2);
+      tryMoveOrCaptureAtLocation(row + 1, col - 2);
       break;
 
     case PieceType.RookBlack:
@@ -466,7 +470,7 @@ export function boardStateIsIllegal(board: Board, turnState: TurnState) {
   // Find the kings
   const kingLocations = findKings(board, isWhite);
   if (kingLocations === undefined) {
-    console.log("One or more kings not found on the board!", board);
+    // console.log("One or more kings not found on the board!", board);
     return true;
   }
   let [kingRow, kingCol, enemyKingRow, enemyKingCol] = kingLocations;

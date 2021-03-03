@@ -1,4 +1,4 @@
-import { Board, BOARD_SIZE, Location, Move, VisitedStates } from "../constants";
+import { Board, BOARD_SIZE, Location, Move } from "../constants";
 
 /* ----------------------
     Formatting Output

@@ -1,17 +1,17 @@
 import {
   Board,
-  BOARD_SIZE,
   EvalResult,
-  PieceType,
   TurnState,
   VisitedStates,
+  WIN_BLACK_VALUE,
+  WIN_WHITE_VALUE,
 } from "../constants";
 import {
   getBoardAfterMove,
-  getPieceAtCell,
   getStaticValueOfBoard,
   isInsufficientMaterial,
 } from "./board-utils";
+import { AI_INTELLIGENCE_FACTOR, MAX_SEARCH_DEPTH } from "./config";
 import { encodeBoard, formatMove } from "./io-utils";
 import {
   addBoardToVisitedStates,
@@ -20,7 +20,11 @@ import {
   kingIsInCheck,
 } from "./move-utils";
 
-const MAX_SEARCH_DEPTH = 4;
+/* Tiny weights for tiebreak factors, such that the tiebreak factors are never more
+   significant than anything in the static eval, but if the static eval is tied, these
+   factors break the ties in the specified order. */
+const TIEBREAK_TIER_1_WEIGHT = 0.0001;
+const TIEBREAK_TIER_2_WEIGHT = 0.000001;
 
 export function getBestMove(
   board: Board,
@@ -28,15 +32,7 @@ export function getBestMove(
   visitedStates: VisitedStates,
   searchDepth = MAX_SEARCH_DEPTH
 ): EvalResult {
-  // if (searchDepth === MAX_SEARCH_DEPTH - 1) {
-  //   const boardStr = encodeBoard(board);
-  //   console.log(
-  //     "Examining Board\n",
-  //     encodeBoard(board),
-  //     "TIMES VISITED",
-  //     visitedStates.get(boardStr) || 0
-  //   );
-  // }
+  // Log something nice for the start of the minimax search
   if (searchDepth === MAX_SEARCH_DEPTH) {
     console.log(
       `------------------\n${
@@ -53,8 +49,18 @@ export function getBestMove(
     isWhite ? TurnState.WhiteTurn : TurnState.BlackTurn
   );
   if (moveList.length === 0) {
+    // To prevent the AI from not acting on gameover scenarios, provide a very small tiebreak bonus for early gameovers.
+    const earlyGameEndReward =
+      ((MAX_SEARCH_DEPTH - searchDepth) / MAX_SEARCH_DEPTH) *
+      TIEBREAK_TIER_1_WEIGHT *
+      (isWhite ? 1 : -1);
     return {
-      score: kingIsInCheck(board, isWhite) ? (isWhite ? -999999 : 999999) : 0,
+      score:
+        (kingIsInCheck(board, isWhite)
+          ? isWhite
+            ? WIN_BLACK_VALUE
+            : WIN_WHITE_VALUE
+          : 0) + earlyGameEndReward,
     };
   }
 
@@ -74,11 +80,13 @@ export function getBestMove(
 
   // Maximize/Minimize
   let bestMove = undefined;
-  let bestScore = isWhite ? -999999999 : 99999999;
+  let bestScore = isWhite
+    ? -1 * Number.MAX_SAFE_INTEGER
+    : Number.MAX_SAFE_INTEGER;
   for (const move of moveList) {
     let moveScore;
     const boardAfter = getBoardAfterMove(move.startCell, move.endCell, board);
-    const visistedAfter = addBoardToVisitedStates(boardAfter, visitedStates);
+    const visitedAfter = addBoardToVisitedStates(boardAfter, visitedStates);
 
     if (searchDepth === 0) {
       // If no search depth left, evaluate each board with static eval
@@ -88,13 +96,13 @@ export function getBestMove(
       const opponentResult = getBestMove(
         boardAfter,
         !isWhite,
-        visistedAfter,
+        visitedAfter,
         searchDepth - 1
       );
       // Give a very small adjustment based on the heuristic score partway through each gameplay line.
       // This lets the AI have a tiebreaker between equivalent positions in the lategame, opting to capitalize on advantages in fewer moves.
       const intermediateScoreAdjustment =
-        0.01 *
+        TIEBREAK_TIER_2_WEIGHT *
         getStaticValueOfBoard(boardAfter) *
         (MAX_SEARCH_DEPTH - searchDepth);
       moveScore = opponentResult.score + intermediateScoreAdjustment;
@@ -107,7 +115,18 @@ export function getBestMove(
       (isWhite && moveScore > bestScore) ||
       (!isWhite && moveScore < bestScore)
     ) {
-      // Found new best move
+      // At the top-most search level (picking the actual move to be played), we model imperfect intelligence by
+      // sometimes ignoring a new best move.
+      if (
+        searchDepth === MAX_SEARCH_DEPTH &&
+        bestMove !== undefined &&
+        Math.random() > AI_INTELLIGENCE_FACTOR
+      ) {
+        console.log("Ignoring new best move, by random chance");
+        continue;
+      }
+
+      // Save new best move
       bestScore = moveScore;
       bestMove = move;
     }

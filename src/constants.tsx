@@ -54,6 +54,9 @@ export enum TurnState {
   BlackTurn,
 }
 
+export const WIN_WHITE_VALUE = 999999;
+export const WIN_BLACK_VALUE = -999999;
+
 // export const STARTING_BOARD: Board = [
 //   [
 //     PieceType.RookBlack,
@@ -94,10 +97,10 @@ export enum TurnState {
 export const STARTING_BOARD: Board = [
   [
     PieceType.RookBlack,
-    PieceType.KnightBlack,
+    PieceType.BishopBlack,
     PieceType.KingBlack,
     PieceType.QueenBlack,
-    PieceType.BishopBlack,
+    PieceType.KnightBlack,
   ],
   [
     PieceType.PawnBlack,
@@ -116,9 +119,9 @@ export const STARTING_BOARD: Board = [
   ],
   [
     PieceType.RookWhite,
-    PieceType.KnightWhite,
+    PieceType.BishopWhite,
     PieceType.KingWhite,
     PieceType.QueenWhite,
-    PieceType.BishopWhite,
+    PieceType.KnightWhite,
   ],
 ];

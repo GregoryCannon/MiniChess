@@ -6,6 +6,8 @@ import {
   STARTING_BOARD,
   TurnState,
   VisitedStates,
+  WIN_BLACK_VALUE,
+  WIN_WHITE_VALUE,
 } from "./constants";
 import "./GameManager.css";
 import GameBoard from "./ui_components/GameBoard";
@@ -18,12 +20,9 @@ import {
   isDrawByRepetition,
 } from "./utils/move-utils";
 import { getBoardAfterMove, isInsufficientMaterial } from "./utils/board-utils";
-import { encodeBoard, formatLocation, formatMove } from "./utils/io-utils";
+import { formatLocation, formatMove } from "./utils/io-utils";
 import { getBestMove } from "./utils/ai";
-
-const blackIsHuman = false;
-const whiteIsHuman = false;
-const AI_MOVE_DELAY = 100;
+import { AI_MOVE_DELAY, blackIsHuman, whiteIsHuman } from "./utils/config";
 
 class GameManager extends React.Component<
   {},
@@ -33,6 +32,7 @@ class GameManager extends React.Component<
     moveMap?: MoveMap;
     visitedStates: VisitedStates;
     selectedCell?: Location;
+    positionEval?: number;
   }
 > {
   constructor(props: any) {
@@ -43,10 +43,12 @@ class GameManager extends React.Component<
       moveMap: undefined,
       visitedStates: new Map(),
       selectedCell: undefined,
+      positionEval: undefined,
     };
 
     this.onCellClicked = this.onCellClicked.bind(this);
     this.restart = this.restart.bind(this);
+    this.stopGame = this.stopGame.bind(this);
   }
 
   // Called after the board has been updated
@@ -227,7 +229,7 @@ class GameManager extends React.Component<
       aiMove.endCell,
       this.state.board
     );
-    this.setState({ board: newBoard }, () => {
+    this.setState({ board: newBoard, positionEval: aiResult.score }, () => {
       this.endTurn();
     });
   }
@@ -242,6 +244,7 @@ class GameManager extends React.Component<
         ),
         visitedStates: new Map(),
         selectedCell: undefined,
+        positionEval: undefined,
       });
     } else {
       this.setState(
@@ -249,6 +252,7 @@ class GameManager extends React.Component<
           board: STARTING_BOARD,
           turnState: TurnState.WhiteTurn,
           visitedStates: new Map(),
+          positionEval: undefined,
         },
         () => {
           this.playAiMoveAfterDelay(AI_MOVE_DELAY);
@@ -257,13 +261,58 @@ class GameManager extends React.Component<
     }
   }
 
+  stopGame() {
+    this.setState({
+      turnState: TurnState.NotStarted,
+    });
+  }
+
+  convertEvalToBarPercentage(positionEval?: number) {
+    if (positionEval === undefined) {
+      return 0;
+    }
+    // Use a logistic model, such that small advantages (e.g. +3, -2) are weighted heavily, then it tapers off towards 100% or 0%.
+    const steepnessMultiplier = 0.3;
+    return (
+      100 / (1 + Math.pow(Math.E, -1 * positionEval * steepnessMultiplier))
+    );
+  }
+
+  getEvalLabelText() {
+    if (this.state.positionEval === undefined) {
+      return "";
+    }
+    return this.state.positionEval >= WIN_WHITE_VALUE / 10 ||
+      this.state.positionEval <= WIN_BLACK_VALUE / 10
+      ? "Forced Mate"
+      : this.state.positionEval?.toFixed(2);
+  }
+
   render() {
     const secondaryHighlightedCells: Set<string> = this.getSemiHighlightedCells();
+    const evalPercentage = this.convertEvalToBarPercentage(
+      this.state.positionEval
+    );
+    const evalLabelText = this.getEvalLabelText();
 
     return (
       <div className="GameManager">
         <h3>{this.getStatusMessage()}</h3>
-
+        <div
+          className="eval-bar-container"
+          style={{
+            visibility:
+              this.state.positionEval === undefined ? "hidden" : "visible",
+          }}
+        >
+          <div className="eval-text-container">
+            <div className="eval-text">{evalLabelText}</div>
+          </div>
+          <div
+            className="eval-bar"
+            style={{ width: evalPercentage + "%" }}
+          ></div>
+        </div>
         <div className="game-board-container">
           <GameBoard
             onCellClicked={this.onCellClicked}
@@ -272,13 +321,13 @@ class GameManager extends React.Component<
             board={this.state.board}
           />
         </div>
-
         <button onClick={this.restart}>
           {this.state.turnState === TurnState.WhiteTurn ||
           this.state.turnState === TurnState.BlackTurn
             ? "Restart"
             : "Start!"}
         </button>
+        <button onClick={this.stopGame}>Stop</button>
       </div>
     );
   }

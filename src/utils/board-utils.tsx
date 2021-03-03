@@ -140,6 +140,15 @@ export function getStaticValueOfBoard(board: Board) {
       if (piece) {
         score += getValueOfPiece(piece);
       }
+
+      /* ----- Other custom factors ----- */
+
+      // Reward pushed pawns
+      if (piece === PieceType.PawnWhite) {
+        score += 0.05 * (BOARD_SIZE - 2 - r);
+      } else if (piece === PieceType.PawnBlack) {
+        score -= 0.05 * (r - 1);
+      }
     }
   }
   return score;
@@ -173,6 +182,7 @@ export function isInsufficientMaterial(board: Board) {
     }
   }
   return (
-    (numBishops == 1 && numKnights == 0) || (numKnights == 1 && numBishops == 0)
+    (numBishops === 1 && numKnights === 0) ||
+    (numKnights === 1 && numBishops === 0)
   );
 }

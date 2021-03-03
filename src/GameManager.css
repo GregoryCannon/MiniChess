@@ -8,5 +8,38 @@ h3 {
 }
 
 .game-board-container {
-  margin: 40px auto;
+  margin: 20px auto;
+}
+
+.eval-bar-container {
+  position: relative;
+  border: 1px solid black;
+  background: rgb(66, 66, 66);
+  height: 36px;
+  width: 200px;
+  margin: auto;
+}
+
+.eval-bar {
+  float: left;
+  background: rgb(231, 231, 231);
+  height: 100%;
+}
+
+.eval-text-container {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.eval-text {
+  display: inline-block;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.893);
+  border-radius: 5px;
 }
