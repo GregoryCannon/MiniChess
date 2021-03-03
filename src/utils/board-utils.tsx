@@ -102,3 +102,77 @@ export function getBoardAfterMove(
 
   return newBoard;
 }
+
+function getValueOfPiece(piece: PieceType) {
+  switch (piece) {
+    case PieceType.PawnWhite:
+      return 1;
+    case PieceType.PawnBlack:
+      return -1;
+    case PieceType.BishopWhite:
+    case PieceType.KnightWhite:
+      return 3;
+    case PieceType.BishopBlack:
+    case PieceType.KnightBlack:
+      return -3;
+    case PieceType.RookWhite:
+      return 5;
+    case PieceType.RookBlack:
+      return -5;
+    case PieceType.QueenWhite:
+      return 8;
+    case PieceType.QueenBlack:
+      return -8;
+    case PieceType.KingBlack:
+    case PieceType.KingWhite:
+      return 0;
+    default:
+      console.log("Requested value of unknown piece" + piece);
+      return 0;
+  }
+}
+
+export function getStaticValueOfBoard(board: Board) {
+  let score = 0;
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      const piece = getPieceAtCell([r, c], board);
+      if (piece) {
+        score += getValueOfPiece(piece);
+      }
+    }
+  }
+  return score;
+}
+
+export function isInsufficientMaterial(board: Board) {
+  let numBishops = 0,
+    numKnights = 0;
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      const piece = getPieceAtCell([r, c], board);
+      if (!piece) {
+        continue;
+      }
+      switch (piece) {
+        case PieceType.KnightBlack:
+        case PieceType.KnightWhite:
+          numKnights += 1;
+          break;
+        case PieceType.BishopBlack:
+        case PieceType.BishopWhite:
+          numBishops += 1;
+          break;
+        case PieceType.KingBlack:
+        case PieceType.KingWhite:
+          continue;
+        default:
+          // Any other piece is sufficient material
+          return false;
+      }
+    }
+  }
+  return (
+    (numBishops == 1 && numKnights == 0) || (numKnights == 1 && numBishops == 0)
+  );
+}

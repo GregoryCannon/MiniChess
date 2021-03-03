@@ -5,16 +5,25 @@ import {
   MoveMap,
   STARTING_BOARD,
   TurnState,
+  VisitedStates,
 } from "./constants";
 import "./GameManager.css";
 import GameBoard from "./ui_components/GameBoard";
-import { convertToMoveMap, generatePossibleMoves } from "./utils/move-utils";
-import { getBoardAfterMove } from "./utils/board-utils";
-import { formatLocation, formatMove } from "./utils/io-utils";
+import {
+  convertToMoveMap,
+  generatePossibleMoves,
+  addBoardToVisitedStates,
+  kingIsInCheck,
+  noLegalMoves,
+  isDrawByRepetition,
+} from "./utils/move-utils";
+import { getBoardAfterMove, isInsufficientMaterial } from "./utils/board-utils";
+import { encodeBoard, formatLocation, formatMove } from "./utils/io-utils";
 import { getBestMove } from "./utils/ai";
 
 const blackIsHuman = false;
 const whiteIsHuman = false;
+const AI_MOVE_DELAY = 100;
 
 class GameManager extends React.Component<
   {},
@@ -22,6 +31,7 @@ class GameManager extends React.Component<
     board: Board;
     turnState: TurnState;
     moveMap?: MoveMap;
+    visitedStates: VisitedStates;
     selectedCell?: Location;
   }
 > {
@@ -31,6 +41,7 @@ class GameManager extends React.Component<
       board: STARTING_BOARD,
       turnState: TurnState.NotStarted,
       moveMap: undefined,
+      visitedStates: new Map(),
       selectedCell: undefined,
     };
 
@@ -38,23 +49,48 @@ class GameManager extends React.Component<
     this.restart = this.restart.bind(this);
   }
 
+  // Called after the board has been updated
   endTurn() {
-    const nextTurnState =
+    // Get the new visitedStates and turnState
+    const newVisitedStates = addBoardToVisitedStates(
+      this.state.board,
+      this.state.visitedStates
+    );
+    let newTurnState =
       this.state.turnState === TurnState.WhiteTurn
         ? TurnState.BlackTurn
         : TurnState.WhiteTurn;
-    const nextPlayerIsHuman =
-      nextTurnState === TurnState.WhiteTurn ? whiteIsHuman : blackIsHuman;
 
+    // Check for game-over conditions
+    const isWhiteNextTurn = newTurnState === TurnState.WhiteTurn;
+    if (noLegalMoves(this.state.board, isWhiteNextTurn)) {
+      if (kingIsInCheck(this.state.board, isWhiteNextTurn)) {
+        newTurnState = isWhiteNextTurn
+          ? TurnState.WinBlack
+          : TurnState.WinWhite;
+      } else {
+        newTurnState = TurnState.DrawStalemate;
+      }
+    }
+    if (isDrawByRepetition(this.state.board, newVisitedStates)) {
+      newTurnState = TurnState.DrawRepetition;
+    }
+    if (isInsufficientMaterial(this.state.board)) {
+      newTurnState = TurnState.DrawMaterial;
+    }
+
+    const nextPlayerIsHuman =
+      newTurnState === TurnState.WhiteTurn ? whiteIsHuman : blackIsHuman;
     if (nextPlayerIsHuman) {
       // Generate legal moves for next player
       const moveMap = convertToMoveMap(
-        generatePossibleMoves(this.state.board, nextTurnState)
+        generatePossibleMoves(this.state.board, newTurnState)
       );
 
       this.setState({
         selectedCell: undefined,
-        turnState: nextTurnState,
+        turnState: newTurnState,
+        visitedStates: newVisitedStates,
         moveMap,
       });
     } else {
@@ -62,10 +98,11 @@ class GameManager extends React.Component<
       this.setState(
         {
           selectedCell: undefined,
-          turnState: nextTurnState,
+          turnState: newTurnState,
+          visitedStates: newVisitedStates,
           moveMap: undefined,
         },
-        () => this.playAiMoveAfterDelay(1000)
+        () => this.playAiMoveAfterDelay(AI_MOVE_DELAY)
       );
     }
   }
@@ -79,8 +116,10 @@ class GameManager extends React.Component<
 
   onCellClicked(clickLocation: Location) {
     if (
-      this.state.turnState === TurnState.NotStarted ||
-      this.state.turnState === TurnState.GameOver
+      !(
+        this.state.turnState === TurnState.WhiteTurn ||
+        this.state.turnState === TurnState.BlackTurn
+      )
     ) {
       return;
     }
@@ -142,30 +181,41 @@ class GameManager extends React.Component<
     switch (this.state.turnState) {
       case TurnState.NotStarted:
         return "Click Start to start a new game!";
-      case TurnState.GameOver:
-        return "Game Over!";
+      case TurnState.WinWhite:
+        return "White wins!";
+      case TurnState.WinBlack:
+        return "Black wins!";
+      case TurnState.DrawRepetition:
+        return "Draw by repetition.";
+      case TurnState.DrawStalemate:
+        return "Draw by stalemate.";
+      case TurnState.DrawMaterial:
+        return "Draw by material";
       case TurnState.WhiteTurn:
-        return "White's Turn.";
+        return "White's turn.";
       case TurnState.BlackTurn:
-        return "Black's Turn.";
+        return "Black's turn.";
     }
   }
 
   playAiMoveAfterDelay(delayMs: number) {
     const self = this;
-    setTimeout(
-      function () {
-        console.log("Callback called");
-        self.playAiMoveInternal();
-      }.bind(this),
-      delayMs
-    );
+    setTimeout(function () {
+      self.playAiMoveInternal();
+    }, delayMs);
   }
 
   playAiMoveInternal() {
+    if (
+      this.state.turnState !== TurnState.WhiteTurn &&
+      this.state.turnState !== TurnState.BlackTurn
+    ) {
+      return;
+    }
     const aiResult = getBestMove(
       this.state.board,
-      this.state.turnState === TurnState.WhiteTurn
+      this.state.turnState === TurnState.WhiteTurn,
+      this.state.visitedStates
     );
     const aiMove = aiResult.bestMove;
     if (!aiMove) {
@@ -190,6 +240,7 @@ class GameManager extends React.Component<
         moveMap: convertToMoveMap(
           generatePossibleMoves(STARTING_BOARD, TurnState.WhiteTurn)
         ),
+        visitedStates: new Map(),
         selectedCell: undefined,
       });
     } else {
@@ -197,9 +248,10 @@ class GameManager extends React.Component<
         {
           board: STARTING_BOARD,
           turnState: TurnState.WhiteTurn,
+          visitedStates: new Map(),
         },
         () => {
-          this.playAiMoveAfterDelay(1000);
+          this.playAiMoveAfterDelay(AI_MOVE_DELAY);
         }
       );
     }
@@ -210,8 +262,7 @@ class GameManager extends React.Component<
 
     return (
       <div className="GameManager">
-        <h2>Main Game</h2>
-        <h4>{this.getStatusMessage()}</h4>
+        <h3>{this.getStatusMessage()}</h3>
 
         <div className="game-board-container">
           <GameBoard
@@ -223,10 +274,10 @@ class GameManager extends React.Component<
         </div>
 
         <button onClick={this.restart}>
-          {this.state.turnState === TurnState.GameOver ||
-          this.state.turnState === TurnState.NotStarted
-            ? "Start!"
-            : "Restart"}
+          {this.state.turnState === TurnState.WhiteTurn ||
+          this.state.turnState === TurnState.BlackTurn
+            ? "Restart"
+            : "Start!"}
         </button>
       </div>
     );

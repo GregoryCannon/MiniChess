@@ -6,6 +6,7 @@ import {
   Move,
   BOARD_SIZE,
   MoveMap,
+  VisitedStates,
 } from "../constants";
 import {
   getPieceAtCell,
@@ -16,7 +17,7 @@ import {
   isBlackPiece,
   getBoardAfterMove,
 } from "./board-utils";
-import { formatLocation } from "./io-utils";
+import { encodeBoard, formatLocation } from "./io-utils";
 
 /* ----------------------
     Generating moves
@@ -390,11 +391,19 @@ function findKings(board: Board, isWhite: boolean) {
 }
 
 export function kingIsInCheck(
-  kingRow: number,
-  kingCol: number,
   board: Board,
-  isWhite: boolean
+  isWhite: boolean,
+  kingRow?: number,
+  kingCol?: number
 ) {
+  // Find kings if location not provided
+  const kingLocations = findKings(board, isWhite);
+  if (kingLocations === undefined) {
+    throw new Error("Cannot evaluate board, missing king");
+  }
+  kingRow = kingLocations[0];
+  kingCol = kingLocations[1];
+
   // Check for pawn attackers
   if (isWhite) {
     if (
@@ -471,24 +480,35 @@ export function boardStateIsIllegal(board: Board, turnState: TurnState) {
   }
 
   // The board state is illegal if the move puts the king in check
-  return kingIsInCheck(kingRow, kingCol, board, isWhite);
+  return kingIsInCheck(board, isWhite, kingRow, kingCol);
 }
 
-/** Returns true if the player whose turn it is has lost by checkmate. */
-export function isCheckmate(board: Board, isWhite: boolean) {
-  const kingLocations = findKings(board, isWhite);
-  if (kingLocations === undefined) {
-    throw new Error("Cannot evaluate board, missing king");
-  }
-  const [kingRow, kingCol, _, __] = kingLocations;
-  if (kingIsInCheck(kingRow, kingCol, board, isWhite)) {
-    const moveList = generatePossibleMoves(
-      board,
-      isWhite ? TurnState.WhiteTurn : TurnState.BlackTurn
-    );
-    if (moveList.length === 0) {
-      return true;
+export function noLegalMoves(board: Board, isWhite: boolean) {
+  const moveList = generatePossibleMoves(
+    board,
+    isWhite ? TurnState.WhiteTurn : TurnState.BlackTurn
+  );
+  return moveList.length === 0;
+}
+
+export function addBoardToVisitedStates(
+  board: Board,
+  visitedStates: VisitedStates
+) {
+  const boardStr = encodeBoard(board);
+  const newVisitedStates = new Map(visitedStates);
+  if (newVisitedStates.has(boardStr)) {
+    const existingVal = newVisitedStates.get(boardStr);
+    if (existingVal !== undefined) {
+      newVisitedStates.set(boardStr, existingVal + 1);
     }
+  } else {
+    newVisitedStates.set(boardStr, 1);
   }
-  return false;
+  return newVisitedStates;
+}
+
+export function isDrawByRepetition(board: Board, visitedStates: VisitedStates) {
+  const boardStr = encodeBoard(board);
+  return visitedStates.has(boardStr) && (visitedStates.get(boardStr) || 0) > 2;
 }

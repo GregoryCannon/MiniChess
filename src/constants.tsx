@@ -20,6 +20,8 @@ export interface EvalResult {
   bestMove?: Move;
 }
 
+export type VisitedStates = Map<string, number>;
+
 /* ----------- Constants and Enums ----------- */
 
 export const BOARD_SIZE = 5;
@@ -43,7 +45,11 @@ export enum PieceType {
 
 export enum TurnState {
   NotStarted,
-  GameOver,
+  WinWhite,
+  WinBlack,
+  DrawRepetition,
+  DrawStalemate,
+  DrawMaterial,
   WhiteTurn,
   BlackTurn,
 }

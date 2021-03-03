@@ -3,6 +3,10 @@ button {
   font-size: 30px;
 }
 
+h3 {
+  margin-top: 80px;
+}
+
 .game-board-container {
   margin: 40px auto;
 }

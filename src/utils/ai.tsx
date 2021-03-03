@@ -4,93 +4,100 @@ import {
   EvalResult,
   PieceType,
   TurnState,
+  VisitedStates,
 } from "../constants";
-import { getBoardAfterMove, getPieceAtCell } from "./board-utils";
-import { formatMove } from "./io-utils";
-import { generatePossibleMoves, isCheckmate } from "./move-utils";
+import {
+  getBoardAfterMove,
+  getPieceAtCell,
+  getStaticValueOfBoard,
+  isInsufficientMaterial,
+} from "./board-utils";
+import { encodeBoard, formatMove } from "./io-utils";
+import {
+  addBoardToVisitedStates,
+  generatePossibleMoves,
+  isDrawByRepetition,
+  kingIsInCheck,
+} from "./move-utils";
 
 const MAX_SEARCH_DEPTH = 4;
-
-function getValueOfPiece(piece: PieceType) {
-  switch (piece) {
-    case PieceType.PawnWhite:
-      return 1;
-    case PieceType.PawnBlack:
-      return -1;
-    case PieceType.BishopWhite:
-    case PieceType.KnightWhite:
-      return 3;
-    case PieceType.BishopBlack:
-    case PieceType.KnightBlack:
-      return -3;
-    case PieceType.RookWhite:
-      return 5;
-    case PieceType.RookBlack:
-      return -5;
-    case PieceType.QueenWhite:
-      return 8;
-    case PieceType.QueenBlack:
-      return -8;
-    case PieceType.KingBlack:
-    case PieceType.KingWhite:
-      return 0;
-    default:
-      console.log("Requested value of unknown piece" + piece);
-      return 0;
-  }
-}
-
-function getRawValueOfBoard(board: Board, isWhite: boolean) {
-  // Check for checkmate
-  if (isCheckmate(board, isWhite)) {
-    return isWhite ? -999999 : 999999;
-  }
-
-  let score = 0;
-  for (let r = 0; r < BOARD_SIZE; r++) {
-    for (let c = 0; c < BOARD_SIZE; c++) {
-      const piece = getPieceAtCell([r, c], board);
-      if (piece) {
-        score += getValueOfPiece(piece);
-      }
-    }
-  }
-  return score;
-}
 
 export function getBestMove(
   board: Board,
   isWhite: boolean,
+  visitedStates: VisitedStates,
   searchDepth = MAX_SEARCH_DEPTH
 ): EvalResult {
-  // console.log("Evaluating board at depth " + searchDepth);
+  // if (searchDepth === MAX_SEARCH_DEPTH - 1) {
+  //   const boardStr = encodeBoard(board);
+  //   console.log(
+  //     "Examining Board\n",
+  //     encodeBoard(board),
+  //     "TIMES VISITED",
+  //     visitedStates.get(boardStr) || 0
+  //   );
+  // }
+  if (searchDepth === MAX_SEARCH_DEPTH) {
+    console.log(
+      `------------------\n${
+        isWhite ? "White" : "Black"
+      } to move, with board: ${encodeBoard(board)}`
+    );
+  }
 
-  // Check for game over
+  const staticValue = getStaticValueOfBoard(board);
+
+  // Check for game over by checkmate or stalemate
   const moveList = generatePossibleMoves(
     board,
     isWhite ? TurnState.WhiteTurn : TurnState.BlackTurn
   );
   if (moveList.length === 0) {
     return {
-      score: isCheckmate(board, isWhite) ? (isWhite ? -999999 : 999999) : 0,
-      bestMove: undefined,
+      score: kingIsInCheck(board, isWhite) ? (isWhite ? -999999 : 999999) : 0,
+    };
+  }
+
+  // Check for draw by repetition
+  if (isDrawByRepetition(board, visitedStates)) {
+    return {
+      score: 0,
+    };
+  }
+
+  // Check for insufficient material
+  if (Math.abs(staticValue) <= 3 && isInsufficientMaterial(board)) {
+    return {
+      score: 0,
     };
   }
 
   // Maximize/Minimize
   let bestMove = undefined;
-  let bestScore = isWhite ? -999999 : 999999;
+  let bestScore = isWhite ? -999999999 : 99999999;
   for (const move of moveList) {
     let moveScore;
     const boardAfter = getBoardAfterMove(move.startCell, move.endCell, board);
+    const visistedAfter = addBoardToVisitedStates(boardAfter, visitedStates);
 
     if (searchDepth === 0) {
       // If no search depth left, evaluate each board with static eval
-      moveScore = getRawValueOfBoard(boardAfter, !isWhite);
+      moveScore = getStaticValueOfBoard(boardAfter);
     } else {
       // Evaluate the move score recursively
-      const opponentResult = getBestMove(boardAfter, !isWhite, searchDepth - 1);
-      moveScore = opponentResult.score;
+      const opponentResult = getBestMove(
+        boardAfter,
+        !isWhite,
+        visistedAfter,
+        searchDepth - 1
+      );
+      // Give a very small adjustment based on the heuristic score partway through each gameplay line.
+      // This lets the AI have a tiebreaker between equivalent positions in the lategame, opting to capitalize on advantages in fewer moves.
+      const intermediateScoreAdjustment =
+        0.01 *
+        getStaticValueOfBoard(boardAfter) *
+        (MAX_SEARCH_DEPTH - searchDepth);
+      moveScore = opponentResult.score + intermediateScoreAdjustment;
     }
 
     if (searchDepth === MAX_SEARCH_DEPTH) {
