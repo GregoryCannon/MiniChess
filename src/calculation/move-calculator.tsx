@@ -1,10 +1,10 @@
+import { BOARD_SIZE } from "../config";
 import {
   PieceType,
   Location,
   Board,
   TurnState,
   Move,
-  BOARD_SIZE,
   MoveMap,
   VisitedStates,
 } from "../constants";

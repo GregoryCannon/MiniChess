@@ -1,10 +1,10 @@
+import { BOARD_SIZE } from "../config";
 import {
   PieceType,
   Location,
   Board,
   EMPTY,
   TurnState,
-  BOARD_SIZE,
   Move,
 } from "../constants";
 

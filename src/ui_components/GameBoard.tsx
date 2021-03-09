@@ -1,14 +1,8 @@
 import React from "react";
 import "./GameBoard.css";
-import {
-  Board,
-  BOARD_SIZE,
-  CellContents,
-  EMPTY,
-  Location,
-  PieceType,
-} from "../constants";
+import { Board, CellContents, EMPTY, Location, PieceType } from "../constants";
 import { formatLocation } from "../calculation/io";
+import { BOARD_SIZE } from "../config";
 
 function cellIsSelected(
   rowIndex: number,
@@ -127,11 +121,13 @@ function GameBoard(props: {
       ))}
       <div className="label-row">
         <div className="label-vertical"></div>
-        {["a", "b", "c", "d", "e"].map((val) => (
-          <div className="label-horizontal" key={val}>
-            {val}
-          </div>
-        ))}
+        {["a", "b", "c", "d", "e", "f", "g", "h"]
+          .slice(0, BOARD_SIZE)
+          .map((val) => (
+            <div className="label-horizontal" key={val}>
+              {val}
+            </div>
+          ))}
       </div>
     </div>
   );

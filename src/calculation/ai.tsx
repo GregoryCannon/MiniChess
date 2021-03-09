@@ -46,6 +46,12 @@ function getIntermediateScoreAdjustment(board: Board, searchDepth: number) {
   );
 }
 
+export function getRandomMove(board: Board, turnState: TurnState) {
+  const moveList = generatePossibleMoves(board, turnState);
+  const index = Math.floor(Math.random() * moveList.length);
+  return moveList[index];
+}
+
 export function getAiMove(
   board: Board,
   isWhite: boolean,

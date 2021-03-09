@@ -35,8 +35,6 @@ export type VisitedStates = Map<string, number>;
 
 /* ----------- Constants and Enums ----------- */
 
-export const BOARD_SIZE = 5;
-
 export const EMPTY = ".";
 
 export enum PieceType {
@@ -60,6 +58,7 @@ function getLookup(): Map<string, PieceType> {
   map.set("K", PieceType.KingWhite);
   map.set("Q", PieceType.QueenWhite);
   map.set("R", PieceType.RookWhite);
+  map.set("N", PieceType.KnightWhite);
   map.set("B", PieceType.BishopWhite);
   map.set("p", PieceType.PawnBlack);
   map.set("k", PieceType.KingBlack);
@@ -86,42 +85,42 @@ export enum TurnState {
 export const WIN_WHITE_VALUE = 999999;
 export const WIN_BLACK_VALUE = -999999;
 
-// export const STARTING_BOARD: Board = [
-//   [
-//     PieceType.RookBlack,
-//     PieceType.BishopBlack,
-//     PieceType.QueenBlack,
-//     PieceType.KingBlack,
-//     PieceType.KnightBlack,
-//     PieceType.RookBlack,
-//   ],
-//   [
-//     PieceType.PawnBlack,
-//     PieceType.PawnBlack,
-//     PieceType.PawnBlack,
-//     PieceType.PawnBlack,
-//     PieceType.PawnBlack,
-//     PieceType.PawnBlack,
-//   ],
-//   [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
-//   [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
-//   [
-//     PieceType.PawnWhite,
-//     PieceType.PawnWhite,
-//     PieceType.PawnWhite,
-//     PieceType.PawnWhite,
-//     PieceType.PawnWhite,
-//     PieceType.PawnWhite,
-//   ],
-//   [
-//     PieceType.RookWhite,
-//     PieceType.BishopWhite,
-//     PieceType.QueenWhite,
-//     PieceType.KingWhite,
-//     PieceType.KnightWhite,
-//     PieceType.RookWhite,
-//   ],
-// ];
+export const STARTING_BOARD_6x6: Board = [
+  [
+    PieceType.RookBlack,
+    PieceType.BishopBlack,
+    PieceType.QueenBlack,
+    PieceType.KingBlack,
+    PieceType.KnightBlack,
+    PieceType.RookBlack,
+  ],
+  [
+    PieceType.PawnBlack,
+    PieceType.PawnBlack,
+    PieceType.PawnBlack,
+    PieceType.PawnBlack,
+    PieceType.PawnBlack,
+    PieceType.PawnBlack,
+  ],
+  [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
+  [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
+  [
+    PieceType.PawnWhite,
+    PieceType.PawnWhite,
+    PieceType.PawnWhite,
+    PieceType.PawnWhite,
+    PieceType.PawnWhite,
+    PieceType.PawnWhite,
+  ],
+  [
+    PieceType.RookWhite,
+    PieceType.BishopWhite,
+    PieceType.QueenWhite,
+    PieceType.KingWhite,
+    PieceType.KnightWhite,
+    PieceType.RookWhite,
+  ],
+];
 
 export const STARTING_BOARD_5x5: Board = [
   [

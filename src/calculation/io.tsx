@@ -1,13 +1,12 @@
 import {
   Board,
-  BOARD_SIZE,
   CellContents,
   EMPTY,
   Location,
   Move,
   PIECE_TYPE_LOOKUP,
 } from "../constants";
-import { LOG_LEVEL } from "../config";
+import { BOARD_SIZE, LOG_LEVEL } from "../config";
 
 const BOARD_ROW_SEPARATOR = "\n";
 

@@ -1,6 +1,6 @@
+import { BOARD_SIZE } from "../config";
 import {
   Board,
-  BOARD_SIZE,
   Move,
   PieceType,
   TurnState,
