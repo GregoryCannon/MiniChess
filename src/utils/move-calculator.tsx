@@ -16,8 +16,8 @@ import {
   isWhitePiece,
   isBlackPiece,
   getBoardAfterMove,
-} from "./board-utils";
-import { encodeBoard, formatLocation, formatMove } from "./io-utils";
+} from "./board-functions";
+import { encodeBoard, formatLocation } from "./io";
 
 /* ----------------------
     Generating moves
@@ -57,19 +57,23 @@ export function canMovePiece(
   return true;
 }
 
+export function getMoveMap(board: Board, turnState: TurnState): MoveMap {
+  return convertMoveListToMoveMap(generatePossibleMoves(board, turnState));
+}
+
 /**
  * Convert a list of moves to a movement map, which maps the starting locations to the list of possible end locations.
  * NB: The keys and values are --formatted-- locations, to avoid the problem of array equality.
  */
-export function convertToMoveMap(moveList: Array<Move>): MoveMap {
+export function convertMoveListToMoveMap(moveList: Array<Move>): MoveMap {
   const map = new Map();
   for (const move of moveList) {
     const startStr = formatLocation(move.startCell);
     const endStr = formatLocation(move.endCell);
     if (!map.has(startStr)) {
-      map.set(startStr, new Set());
+      map.set(startStr, new Map());
     }
-    map.get(startStr).add(endStr);
+    map.get(startStr).set(endStr, move);
   }
   return map;
 }
@@ -249,7 +253,7 @@ function getMovesForPiece(
 
   // Filter out moves that leave the king in check
   movesForPiece = movesForPiece.filter((move) => {
-    const boardAfter = getBoardAfterMove(move.startCell, move.endCell, board);
+    const boardAfter = getBoardAfterMove(move, board);
     return !boardStateIsIllegal(boardAfter, turnState);
   });
 
@@ -403,7 +407,7 @@ export function kingIsInCheck(
   // Find kings if location not provided
   const kingLocations = findKings(board, isWhite);
   if (kingLocations === undefined) {
-    throw new Error("Cannot evaluate board, missing king");
+    throw new Error("Cannot evaluate board, missing king" + encodeBoard(board));
   }
   kingRow = kingLocations[0];
   kingCol = kingLocations[1];
@@ -435,7 +439,11 @@ export function kingIsInCheck(
     getPieceAtCell([kingRow + 2, kingCol - 1], board) === enemyKnightType ||
     getPieceAtCell([kingRow + 2, kingCol + 1], board) === enemyKnightType ||
     getPieceAtCell([kingRow - 2, kingCol - 1], board) === enemyKnightType ||
-    getPieceAtCell([kingRow - 2, kingCol + 1], board) === enemyKnightType
+    getPieceAtCell([kingRow - 2, kingCol + 1], board) === enemyKnightType ||
+    getPieceAtCell([kingRow + 1, kingCol - 2], board) === enemyKnightType ||
+    getPieceAtCell([kingRow + 1, kingCol + 2], board) === enemyKnightType ||
+    getPieceAtCell([kingRow - 1, kingCol - 2], board) === enemyKnightType ||
+    getPieceAtCell([kingRow - 1, kingCol + 2], board) === enemyKnightType
   ) {
     return true;
   }
@@ -470,7 +478,6 @@ export function boardStateIsIllegal(board: Board, turnState: TurnState) {
   // Find the kings
   const kingLocations = findKings(board, isWhite);
   if (kingLocations === undefined) {
-    // console.log("One or more kings not found on the board!", board);
     return true;
   }
   let [kingRow, kingCol, enemyKingRow, enemyKingCol] = kingLocations;

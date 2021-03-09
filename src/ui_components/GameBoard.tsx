@@ -1,7 +1,14 @@
 import React from "react";
 import "./GameBoard.css";
-import { Board, CellContents, EMPTY, Location, PieceType } from "../constants";
-import { formatLocation } from "../utils/io-utils";
+import {
+  Board,
+  BOARD_SIZE,
+  CellContents,
+  EMPTY,
+  Location,
+  PieceType,
+} from "../constants";
+import { formatLocation } from "../utils/io";
 
 function cellIsSelected(
   rowIndex: number,
@@ -83,9 +90,7 @@ function GameBoard(props: {
     <div className="game-board">
       {props.board.map((row, rowIndex) => (
         <div className="board-row" key={rowIndex}>
-          <div className="label-vertical">
-            {["e", "d", "c", "b", "a"][rowIndex]}
-          </div>
+          <div className="label-vertical">{BOARD_SIZE - rowIndex}</div>
           {row.map((cellContents: CellContents, colIndex) => (
             <div
               className={
@@ -122,9 +127,9 @@ function GameBoard(props: {
       ))}
       <div className="label-row">
         <div className="label-vertical"></div>
-        {["1", "2", "3", "4", "5"].map((num) => (
-          <div className="label-horizontal" key={num}>
-            {num}
+        {["a", "b", "c", "d", "e"].map((val) => (
+          <div className="label-horizontal" key={val}>
+            {val}
           </div>
         ))}
       </div>

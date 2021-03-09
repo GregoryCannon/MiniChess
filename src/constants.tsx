@@ -6,7 +6,7 @@ export type Location = Array<number>; // e.g. [1, 2] for row 1 column 2
 
 export type CellContents = PieceType | typeof EMPTY;
 
-export type MoveMap = Map<string, Set<string>>;
+export type MoveMap = Map<string, Map<string, Move>>;
 
 export interface Move {
   startCell: Location;
@@ -15,9 +15,20 @@ export interface Move {
   isCapture: boolean;
 }
 
-export interface EvalResult {
+export interface EvaluatedMove extends Move {
   score: number;
-  bestMove?: Move;
+  anticipatedLine?: Array<Board>;
+}
+
+export interface EvaluationResult {
+  score: number;
+  rankedMoveList: Array<EvaluatedMove>;
+}
+
+export interface AiResult {
+  aiMove: EvaluatedMove;
+  trueBestMove: EvaluatedMove;
+  aiMoveRanking: number; // Whether the AI chose the best move, 2nd best, etc.
 }
 
 export type VisitedStates = Map<string, number>;
@@ -42,6 +53,24 @@ export enum PieceType {
   KnightBlack = "n",
   BishopBlack = "b",
 }
+
+function getLookup(): Map<string, PieceType> {
+  const map = new Map();
+  map.set("P", PieceType.PawnWhite);
+  map.set("K", PieceType.KingWhite);
+  map.set("Q", PieceType.QueenWhite);
+  map.set("R", PieceType.RookWhite);
+  map.set("B", PieceType.BishopWhite);
+  map.set("p", PieceType.PawnBlack);
+  map.set("k", PieceType.KingBlack);
+  map.set("q", PieceType.QueenBlack);
+  map.set("r", PieceType.RookBlack);
+  map.set("n", PieceType.KnightBlack);
+  map.set("b", PieceType.BishopBlack);
+  return map;
+}
+
+export const PIECE_TYPE_LOOKUP: Map<string, PieceType> = getLookup();
 
 export enum TurnState {
   NotStarted,
@@ -94,13 +123,13 @@ export const WIN_BLACK_VALUE = -999999;
 //   ],
 // ];
 
-export const STARTING_BOARD: Board = [
+export const STARTING_BOARD_5x5: Board = [
   [
     PieceType.RookBlack,
-    PieceType.BishopBlack,
+    PieceType.KnightBlack,
     PieceType.KingBlack,
     PieceType.QueenBlack,
-    PieceType.KnightBlack,
+    PieceType.BishopBlack,
   ],
   [
     PieceType.PawnBlack,
@@ -119,9 +148,9 @@ export const STARTING_BOARD: Board = [
   ],
   [
     PieceType.RookWhite,
-    PieceType.BishopWhite,
+    PieceType.KnightWhite,
     PieceType.KingWhite,
     PieceType.QueenWhite,
-    PieceType.KnightWhite,
+    PieceType.BishopWhite,
   ],
 ];
