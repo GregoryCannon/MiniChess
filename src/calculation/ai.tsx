@@ -1,6 +1,7 @@
 import {
   AiResult,
   Board,
+  EvaluatedMove,
   EvaluationResult,
   Move,
   TurnState,
@@ -8,7 +9,13 @@ import {
   WIN_WHITE_VALUE,
 } from "../constants";
 import { getBoardAfterMove } from "./board-functions";
-import { AI_INTELLIGENCE_FACTOR, MAX_SEARCH_DEPTH } from "../config";
+import {
+  AI_INTELLIGENCE_FACTOR_BLACK,
+  AI_INTELLIGENCE_FACTOR_WHITE,
+  MAX_SEARCH_DEPTH,
+  SHOULD_ITERATIVE_DEEPEN,
+  THINK_TIME_MS,
+} from "../config";
 import { consoleLog, encodeBoard, formatMove } from "./io";
 import {
   addBoardToVisitedStates,
@@ -31,6 +38,27 @@ function getEarlyMateMultiplier(searchDepthRemaining: number) {
   return Math.max(0.1, 1 - 0.1 * extraMovesUsed);
 }
 
+function moveListsEqual(
+  listA: Array<EvaluatedMove>,
+  listB: Array<EvaluatedMove>
+) {
+  if (listA.length !== listB.length) {
+    return false;
+  }
+  for (let i = 0; i < listA.length; i++) {
+    const a = listA[i];
+    const b = listB[i];
+    if (
+      formatMove(a) !== formatMove(b) ||
+      a.score !== b.score ||
+      a.anticipatedLine?.length !== b.anticipatedLine?.length
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /**
  * Give a very small adjustment based on the heuristic score partway through each gameplay line.
  * This lets the AI have a tiebreaker between equivalent positions in the lategame,
@@ -46,12 +74,6 @@ function getIntermediateScoreAdjustment(board: Board, searchDepth: number) {
   );
 }
 
-export function getRandomMove(board: Board, turnState: TurnState) {
-  const moveList = generatePossibleMoves(board, turnState);
-  const index = Math.floor(Math.random() * moveList.length);
-  return moveList[index];
-}
-
 export function getAiMove(
   board: Board,
   isWhite: boolean,
@@ -65,27 +87,55 @@ export function getAiMove(
     } to move, with board: ${encodeBoard(board)}`
   );
 
-  // Run minimax
-  const moveList = generatePossibleMoves(
+  // Get the list of legal moves
+  let rankedMoveList: Array<EvaluatedMove> = generatePossibleMoves(
     board,
     isWhite ? TurnState.WhiteTurn : TurnState.BlackTurn
-  );
-  // console.log("Initial move list:", moveList);
-  const evalResult = evaluatePosition(
-    board,
-    moveList,
-    isWhite,
-    visitedStates,
-    MAX_SEARCH_DEPTH,
-    Number.MIN_SAFE_INTEGER,
-    Number.MAX_SAFE_INTEGER
-  );
-  const rankedMoveList = evalResult.rankedMoveList;
+  ).map((move) => ({ score: 0, ...move })); // Add 0 scores so they have type 'EvaluatedMove'
+
+  const computationStartTime = Date.now();
+
+  // If we're iterative deepening, start at a small depth and increase over time,
+  // otherwise, do one pass at the max depth.
+  const initialDepth = SHOULD_ITERATIVE_DEEPEN ? 1 : MAX_SEARCH_DEPTH;
+  for (
+    let searchDepth = initialDepth;
+    searchDepth <= 100 && Date.now() - computationStartTime < THINK_TIME_MS;
+    searchDepth++
+  ) {
+    consoleLog(1, `Evaluating the position, with depth ${searchDepth}`);
+    // Evaluate the position, checking moves in order of their ranking so far (if we've ranked them)
+    const evalResult = evaluatePosition(
+      board,
+      rankedMoveList,
+      isWhite,
+      visitedStates,
+      searchDepth,
+      Number.MIN_SAFE_INTEGER,
+      Number.MAX_SAFE_INTEGER
+    );
+
+    console.log(
+      "After depth of",
+      searchDepth,
+      evalResult.rankedMoveList.map(
+        (move) => `Move: ${formatMove(move)}, Score: ${move.score}`
+      )
+    );
+    if (moveListsEqual(rankedMoveList, evalResult.rankedMoveList)) {
+      consoleLog(1, "Reached steady state.");
+      break;
+    }
+    rankedMoveList = evalResult.rankedMoveList;
+  }
 
   // Choose the AI's move based on its intelligence factor
   let aiMoveRanking = 0;
+  const intelligenceFactor = isWhite
+    ? AI_INTELLIGENCE_FACTOR_WHITE
+    : AI_INTELLIGENCE_FACTOR_BLACK;
   while (
-    Math.random() > AI_INTELLIGENCE_FACTOR &&
+    Math.random() > intelligenceFactor &&
     aiMoveRanking < rankedMoveList.length - 1
   ) {
     // Every time the AI rolls unluckily, move one spot down the move list
@@ -113,7 +163,7 @@ export function getAiMove(
 
   return {
     aiMove: rankedMoveList[aiMoveRanking],
-    trueBestMove: evalResult.rankedMoveList[0],
+    trueBestMove: rankedMoveList[0],
     aiMoveRanking,
   };
 }
@@ -136,8 +186,6 @@ export function evaluatePosition(
   alpha: number,
   beta: number
 ): EvaluationResult {
-  // console.log("Starting eval with movelist", moveList, isWhite, board);
-
   // Check for gameovers
   const [gameIsOver, gameOverVal] = checkForGameOver(
     board,
@@ -158,16 +206,17 @@ export function evaluatePosition(
 
   // If no search depth remaining, evaluate with static eval
   if (searchDepth === 0) {
+    // Assign the value of this position to all moves
+    const staticEval = getStaticValueOfBoard(board);
     return {
-      score: getStaticValueOfBoard(board),
-      rankedMoveList: [],
+      score: staticEval,
+      rankedMoveList: moveList.map((move) => ({ ...move, score: staticEval })),
     };
   }
 
   // Maximize/Minimize
   const rankedMoveList = [];
   for (const move of moveList) {
-    // console.log("Inspecting move:", move);
     const boardAfter = getBoardAfterMove(move, board);
     if (
       boardStateIsIllegal(
@@ -175,7 +224,6 @@ export function evaluatePosition(
         isWhite ? TurnState.WhiteTurn : TurnState.BlackTurn
       )
     ) {
-      console.log("ILLEGAL MOVELIST", encodeBoard(board), moveList, isWhite);
       throw Error("ILLEGAL STATE EVALUATED:" + encodeBoard(boardAfter));
     }
 
@@ -237,33 +285,3 @@ export function evaluatePosition(
     rankedMoveList,
   };
 }
-
-// if (searchDepth === MAX_SEARCH_DEPTH) {
-//   consoleLog(2, `Move ${formatMove(move)} has score ${moveScore}`);
-//   consoleLog(
-//     3,
-//     `with anticipated line: ${bestMove.anticipatedLine
-//       ?.map((x) => encodeBoard(x))
-//       .join("\n")}`
-//   );
-// }
-
-// if (
-//   (isWhite && moveScore > bestScore) ||
-//   (!isWhite && moveScore < bestScore)
-// ) {
-//   // At the top-most search level (picking the actual move to be played), we model imperfect intelligence by
-//   // sometimes ignoring a new best move.
-//   if (
-//     searchDepth === MAX_SEARCH_DEPTH &&
-//     bestMove !== undefined &&
-//     Math.random() > AI_INTELLIGENCE_FACTOR
-//   ) {
-//     consoleLog(1, "(!!!!) Ignoring new best move, by random chance");
-//     continue;
-//   }
-
-//   // Save new best move
-//   bestScore = moveScore;
-//   bestMove = move;
-//   anticipatedLine = [board, ...(evalResult.anticipatedLine || [])];
