@@ -8,7 +8,7 @@ import {
   Location,
   PieceType,
 } from "../constants";
-import { formatLocation } from "../utils/io";
+import { formatLocation } from "../calculation/io";
 
 function cellIsSelected(
   rowIndex: number,

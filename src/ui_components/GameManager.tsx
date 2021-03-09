@@ -6,26 +6,26 @@ import {
   MoveMap,
   TurnState,
   VisitedStates,
-} from "./constants";
+} from "../constants";
 import "./GameManager.css";
 import {
   getMoveMap,
   addBoardToVisitedStates,
   generatePossibleMoves,
   convertMoveListToMoveMap,
-} from "./utils/move-calculator";
-import { getBoardAfterMove } from "./utils/board-functions";
-import { consoleLog, formatLocation, formatMove } from "./utils/io";
-import { getAiMove } from "./utils/ai";
+} from "../calculation/move-calculator";
+import { getBoardAfterMove } from "../calculation/board-functions";
+import { consoleLog, formatLocation, formatMove } from "../calculation/io";
+import { getAiMove } from "../calculation/ai";
 import {
   AI_MOVE_DELAY,
   BLACK_IS_HUMAN,
   WHITE_IS_HUMAN,
   getStartingBoard,
-} from "./utils/config";
+} from "../config";
 import { GameRenderer } from "./GameRenderer";
-import { gameIsInProgress } from "./utils/utils";
-import { checkForGameOver } from "./utils/static-eval";
+import { gameIsInProgress } from "../calculation/utils";
+import { checkForGameOver } from "../calculation/static-eval";
 
 class GameManager extends React.Component<
   {},

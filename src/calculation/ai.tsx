@@ -8,7 +8,7 @@ import {
   WIN_WHITE_VALUE,
 } from "../constants";
 import { getBoardAfterMove } from "./board-functions";
-import { AI_INTELLIGENCE_FACTOR, MAX_SEARCH_DEPTH } from "./config";
+import { AI_INTELLIGENCE_FACTOR, MAX_SEARCH_DEPTH } from "../config";
 import { consoleLog, encodeBoard, formatMove } from "./io";
 import {
   addBoardToVisitedStates,

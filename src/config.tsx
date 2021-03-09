@@ -2,8 +2,8 @@
  * Constants for configuring the behavior of the program.
  */
 
-import { STARTING_BOARD_5x5 } from "../constants";
-import { decodeBoard } from "./io";
+import { STARTING_BOARD_5x5 } from "./constants";
+import { decodeBoard } from "./calculation/io";
 
 export const MAX_SEARCH_DEPTH = 6;
 export const AI_INTELLIGENCE_FACTOR = 1; // Value from 0-1 that represents the odds the AI will use each newly discovered better move (as opposed to ignoring it);

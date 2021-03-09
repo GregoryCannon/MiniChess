@@ -7,7 +7,7 @@ import {
   Move,
   PIECE_TYPE_LOOKUP,
 } from "../constants";
-import { LOG_LEVEL } from "./config";
+import { LOG_LEVEL } from "../config";
 
 const BOARD_ROW_SEPARATOR = "\n";
 

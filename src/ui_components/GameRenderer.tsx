@@ -6,9 +6,9 @@ import {
   VisitedStates,
   WIN_BLACK_VALUE,
   WIN_WHITE_VALUE,
-} from "./constants";
-import GameBoard from "./ui_components/GameBoard";
-import { gameIsInProgress } from "./utils/utils";
+} from "../constants";
+import GameBoard from "../ui_components/GameBoard";
+import { gameIsInProgress } from "../calculation/utils";
 
 function convertEvalToBarPercentage(positionEval?: number) {
   if (positionEval === undefined) {
